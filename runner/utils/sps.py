@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Dict
 import yaml
 
-from sbsvf_api import path_pb2, scenario_pb2
+from pisa_api import path_pb2, scenario_pb2
 
 
 from runner.utils.position import PositionFactory, Position
