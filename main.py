@@ -24,6 +24,7 @@ def main():
         runner_spec = json.load(f)
 
     runner = Runner(runner_spec)
+    runner.exec()
 
 
 if __name__ == "__main__":
