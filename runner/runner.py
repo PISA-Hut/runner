@@ -1,7 +1,7 @@
 import importlib
 import logging
 from pathlib import Path
-from time import time
+from time import time, sleep
 from typing import Any, Optional
 
 from runner.av_wrapper import AVWrapper
@@ -9,13 +9,12 @@ from runner.utils.sps import ScenarioPack
 from runner.sim_wrapper import SimWrapper
 
 
-logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+logger = logging.getLogger(__name__)
 
 
 class Runner:
@@ -75,7 +74,7 @@ class Runner:
             self.av = AVWrapper(
                 av_spec=av_spec,
                 dt_ns=int(self._dt_s * 1e9),
-                sps=self.sps,
+                map_name=map_spec.get("name", "unknown_map"),
             )
         except Exception as exc:
             logger.error("AV initialization failed")
@@ -93,7 +92,7 @@ class Runner:
         # )
 
         if self.sps.param_range_file is not None:
-            logger.info("Parameter range file provided: %s", self.sps.param_range_file)
+            logger.debug("Parameter range file provided: %s", self.sps.param_range_file)
             # param_sampler
             module = importlib.import_module(sampler_spec["module_path"].split(":")[0])
             sampler_class = getattr(module, sampler_spec["module_path"].split(":")[1])
@@ -102,7 +101,7 @@ class Runner:
                 past_results=None,
             )
         else:
-            logger.info(
+            logger.debug(
                 "No parameter range file provided; seem as testing a concrete scenario; skipping parameter sampler."
             )
             self.param_sampler = None
@@ -134,7 +133,7 @@ class Runner:
         logger.debug("Starting parameter sampling execution.")
         total = self.param_sampler.total_permutations()
 
-        logger.info(f"Total parameter combinations: {total}")
+        logger.debug(f"Total parameter combinations: {total}")
 
         for i in range(total):
             logger.info(f"Sampling iteration {i+1}/{total}")
@@ -220,7 +219,7 @@ class Runner:
 
         real_start_time_s = time()
         while True:
-            # loop_start_time = time()
+            loop_start_time = time()
             if self.sim.should_quit():
                 logger.info("Simulator requested to quit.")
                 break
@@ -237,17 +236,17 @@ class Runner:
             ctrl_for_sim = self.av.step(raw_obs, sim_time_ns)
             sim_time_ns += dt_ns
 
-            # cur_time_s = time()
-            # time_use_s = cur_time_s - real_start_time_s
-            # loop_need_time = time() - loop_start_time
-            # sleep_time_s = dt_s - loop_need_time
-            # if sleep_time_s > 0:
-            #     sleep(sleep_time_s)
+            cur_time_s = time()
+            time_use_s = cur_time_s - real_start_time_s
+            loop_need_time = time() - loop_start_time
+            sleep_time_s = dt_s - loop_need_time
+            if sleep_time_s > 0:
+                sleep(sleep_time_s)
 
-            # print(
-            #     f"time use = {time_use_s:.2f} s, sim_time = {sim_time_ns / 1e9:.2f} s",
-            #     end="\r",
-            # )
+            print(
+                f"time use = {time_use_s:.2f} s, sim_time = {sim_time_ns / 1e9:.2f} s",
+                end="\r",
+            )
 
             sim_time_need = time() - real_start_time_s
 

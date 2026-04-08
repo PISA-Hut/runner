@@ -9,7 +9,6 @@ from pisa_api import (
     sim_server_pb2,
     sim_server_pb2_grpc,
     config_pb2,
-    control_pb2,
     empty_pb2,
     path_pb2,
 )
@@ -50,7 +49,7 @@ class SimWrapper:
                 logger.info(f"Simulator ping response: {pong.msg}")
                 break
             except Exception as exc:
-                logger.warning(f"Simulator ping failed, retrying...: {exc}")
+                logger.warning(f"Simulator ping failed, retrying...")
                 time.sleep(1)
         logger.info("Simulator service is alive")
         self._connected = True
@@ -65,10 +64,17 @@ class SimWrapper:
         cfg_struct = Struct()
         cfg_struct.update(self._sim_cfg if self._sim_cfg is not None else {})
         config = config_pb2.Config(config=cfg_struct)
+        scenario_spec = self._sim_spec.get("scenario", None)
+        scenario_req = sim_server_pb2.scenario__pb2.Scenario(
+            type=scenario_spec.get("type"),
+            name=scenario_spec.get("name"),
+            path=path_pb2.Path(path=scenario_spec.get("path")),
+        )
         request = sim_server_pb2.SimServerMessages.InitRequest(
             config=config,
             output_dir=path_pb2.Path(path=str(self._sim_output_dir)),
             dt=self._dt_s,
+            scenario=scenario_req,
         )
         response = self._stub.Init(request, timeout=self._timeout)
         logger.info(f"Init response: {response.msg}")

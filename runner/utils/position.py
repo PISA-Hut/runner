@@ -162,7 +162,7 @@ class PositionFactory:
         ret = int(self._rm.RM_Init(str(xodr_path).encode()))
         if ret != 0:
             raise RuntimeError(f"RM_Init failed ret={ret} xodr={xodr_path}")
-        logger.info("RM_Init OK: %s", xodr_path)
+        logger.debug("RM_Init OK: %s", xodr_path)
 
         self._closed = False
 
@@ -216,7 +216,7 @@ class PositionFactory:
             return
         ret = int(self._rm.RM_Close())
         self._closed = True
-        logger.info("RM_Close ret=%d", ret)
+        logger.debug("RM_Close ret=%d", ret)
 
     def __enter__(self) -> "PositionFactory":
         return self
@@ -280,7 +280,7 @@ class PositionFactory:
                 raise RuntimeError(f"RM_SetLanePosition failed ret={ret}")
 
             pos = self._make_snapshot_from_handle(handle)
-            logger.info(
+            logger.debug(
                 "Position snapshot from lane: road=%d lane=%d s=%.3f offset=%.3f -> x=%.3f y=%.3f z=%.3f h=%.3f p=%.3f r=%.3f",
                 road_id,
                 lane_id,
@@ -325,7 +325,7 @@ class PositionFactory:
                 raise RuntimeError(f"RM_SetWorldPosition failed ret={ret}")
 
             pos = self._make_snapshot_from_handle(handle)
-            logger.info(
+            logger.debug(
                 "Position snapshot from world: x=%.3f y=%.3f z=%.3f h=%.3f p=%.3f r=%.3f -> road=%d lane=%d s=%.3f offset=%.3f",
                 x,
                 y,
