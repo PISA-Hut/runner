@@ -84,6 +84,7 @@ class EgoConfig:
             )
 
         goal = GoalConfig(position=goal_pos)
+
         position_factory.close()
         return cls(
             target_speed=target_speed,
@@ -111,7 +112,6 @@ class EgoConfig:
 class ScenarioPack:
     name: str
     map_name: str
-    scenarios: dict[str, Path]
     param_range_file: Path | None
     ego: EgoConfig
     timeout_ns: int = field(default=int(3e11))  # default 300 seconds
@@ -122,7 +122,6 @@ class ScenarioPack:
     ) -> "ScenarioPack":
         name = scenario_spec["title"]
         scenario_folder = scenario_spec["scenario_path"]
-        scenarios = {"xosc": scenario_folder}
         map_name = map_spec["name"]
         ego = EgoConfig.from_dict(
             scenario_spec["goal_config"],
@@ -140,7 +139,6 @@ class ScenarioPack:
         return cls(
             name=name,
             map_name=map_name,
-            scenarios=scenarios,
             ego=ego,
             param_range_file=param_range_file,
         )
@@ -155,9 +153,6 @@ class ScenarioPack:
         return scenario_pb2.ScenarioPack(
             name=self.name,
             map_name=self.map_name,
-            scenarios={
-                fmt: path_pb2.Path(path=str(p)) for fmt, p in self.scenarios.items()
-            },
             param_range_file=(
                 path_pb2.Path(path=str(self.param_range_file))
                 if self.param_range_file

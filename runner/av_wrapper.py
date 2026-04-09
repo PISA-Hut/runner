@@ -23,11 +23,11 @@ class AVWrapper:
     def __init__(
         self,
         av_spec: dict,
+        map_name: str,
         dt_ns: int = None,
-        sps: ScenarioPack = None,
     ):
         self._av_spec = av_spec
-        self._sps = sps
+        self._map_name = map_name
 
         if dt_ns is None:
             logger.warning("dt not specified for AVWrapper, defaulting to 0.01s")
@@ -54,7 +54,7 @@ class AVWrapper:
                 logger.info(f"AV ping response: {pong.msg}")
                 break
             except Exception as exc:
-                logger.warning(f"AV ping failed, retrying...: {exc}")
+                logger.warning(f"AV ping failed, retrying...")
                 time.sleep(1)
         logger.info("AV service is alive")
         self._connected = True
@@ -72,7 +72,7 @@ class AVWrapper:
         request = av_server_pb2.AvServerMessages.InitRequest(
             config=config,
             output_dir=path_pb2.Path(path=str(self._av_output_dir)),
-            scenario_pack=self._sps.to_protobuf() if self._sps is not None else None,
+            map_name=self._map_name,
             dt=self._dt_s,
         )
         response = self._stub.Init(request, timeout=self._timeout)

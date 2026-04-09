@@ -1,7 +1,14 @@
 import argparse
 import json
-
+import logging
 from runner.runner import Runner
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
+
+logger = logging.getLogger(__name__)
 
 
 def get_args():
