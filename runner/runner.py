@@ -25,28 +25,18 @@ class Runner:
         av_spec = spec.get("av", {})
         sampler_spec = spec.get("sampler", {})
         scenario_spec = spec.get("scenario", {})
+        monitor_spec = spec.get("monitor", {})
         map_spec = spec.get("map", {})
 
-        # Bridge
-        # TODO: default to NoneBridge
-        # bridge_spec = {"name": "none", "module_path": "sv.bridge.none:NoneBridge"}
-
-        # TODO: default to defaultMonitor
-        monitor_spec = {
-            "name": "default",
-            "module_path": "sv.monitor.default:defaultMonitor",
-            "config_path": "configs/monitor/default.yaml",
-            "module_path": "sv.monitor.default:defaultMonitor",
-            "config_path": "configs/monitor/default.yaml",
-        }
-
-        self.job_id = task_spec.get("job_id", "unknown_job")
-
+        self.log_level = runtime_spec.get("log_level", "info").upper()
+        logger.setLevel(getattr(logging, self.log_level, logging.INFO))
         self._dt_s = runtime_spec.get("dt", None)
         if self._dt_s is None:
             logger.warning("No 'dt' specified in runtime_spec; defaulting to 0.01s")
             self._dt_s = 0.01
+        self.dry_run = runtime_spec.get("dry_run", False)
 
+        self.job_id = task_spec.get("job_id", "unknown_job")
         self.output_base = (
             Path(task_spec.get("output_dir", "./outputs")).expanduser().resolve()
         )
@@ -80,16 +70,11 @@ class Runner:
             logger.error("AV initialization failed")
             raise exc
 
-        # module = importlib.import_module(bridge_spec["module_path"].split(":")[0])
-        # bridge_class = getattr(module, bridge_spec["module_path"].split(":")[1])
-        # self.bridge = bridge_class(cfg_path=bridge_spec.get("config_path", None))
-
-        # module = importlib.import_module(monitor_spec["module_path"].split(":")[0])
-        # monitor_class = getattr(module, monitor_spec["module_path"].split(":")[1])
-        # self.monitor = monitor_class(
-        #     cfg_path=monitor_spec.get("config_path", None),
-        #     plan_name=self._id,
-        # )
+        module = importlib.import_module(monitor_spec["module_path"].split(":")[0])
+        monitor_class = getattr(module, monitor_spec["module_path"].split(":")[1])
+        self.monitor = monitor_class(
+            config_path=monitor_spec.get("config_path", None), av=self.av, sim=self.sim
+        )
 
         if self.sps.param_range_file is not None:
             logger.debug("Parameter range file provided: %s", self.sps.param_range_file)
@@ -183,6 +168,11 @@ class Runner:
                 )
             raise e
         else:
+            if self.dry_run:
+                logger.info(
+                    f"Dry run mode enabled; skipping writing completed file for {output_related}."
+                )
+                return
             with open(completed_file, "w") as f:
                 f.write(f"Completed at {time()} by job {self.job_id}\n")
             logger.info(f"Scenario {output_related} completed successfully.")
@@ -219,12 +209,8 @@ class Runner:
 
         real_start_time_s = time()
         while True:
-            loop_start_time = time()
-            if self.sim.should_quit():
-                logger.info("Simulator requested to quit.")
-                break
-            elif self.av.should_quit():
-                logger.info("AV requested to quit.")
+            if self.monitor.should_stop():
+                logger.info("Monitor requested to stop the scenario.")
                 break
 
             if use_real_time:
@@ -234,14 +220,12 @@ class Runner:
 
             raw_obs = self.sim.step(ctrl_for_sim, sim_time_ns)
             ctrl_for_sim = self.av.step(raw_obs, sim_time_ns)
+            self.monitor.update(sim_time_ns, raw_obs, ctrl_for_sim)
+
             sim_time_ns += dt_ns
 
             cur_time_s = time()
             time_use_s = cur_time_s - real_start_time_s
-            # loop_need_time = time() - loop_start_time
-            # sleep_time_s = dt_s - loop_need_time
-            # if sleep_time_s > 0:
-            #     sleep(sleep_time_s)
 
             print(
                 f"time use = {time_use_s:.2f} s, sim_time = {sim_time_ns / 1e9:.2f} s",
