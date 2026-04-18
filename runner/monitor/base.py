@@ -20,7 +20,19 @@ class Monitor:
 
         self._load_config(config_path)
         assert "condition" in self.cfg, "Monitor config must contain 'condition' key"
-        self.root = ConditionNode(self.cfg.get("condition"))
+
+        condition_cfg = self.cfg.get("condition")
+        if not isinstance(condition_cfg, dict):
+            raise ValueError(
+                "Monitor config 'condition' must be a mapping describing an and/or condition tree"
+            )
+        condition_type = condition_cfg.get("type").lower()
+        if condition_type not in {"and", "or"}:
+            raise ValueError(
+                "Monitor root condition must be a composite 'and' or 'or' node; "
+                f"got {condition_type!r}"
+            )
+        self.root = ConditionNode(condition_cfg)
 
         logger.debug("Built condition tree: %s", self.root)
 
