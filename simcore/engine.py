@@ -17,7 +17,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-class Runner:
+class SimulationEngine:
     def __init__(self, spec: dict[str, Any]):
         runtime_spec = spec.get("runtime", {})
         task_spec = spec.get("task", {})
